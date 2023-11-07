@@ -1,0 +1,397 @@
+USE  TrainDB122464;
+
+/*1.	計算每一部門所需的部門名稱、薪資總額、平均薪資，並照薪資總額由高到低排序
+(每一部門的定義：若有部門轄下都無同仁，則薪資總額與平均薪資皆顯示為0)*/
+Select D.DeptName AS 部門名稱,COALESCE(SUM(E.Salary),0) AS 薪資總額,COALESCE(AVG(Salary),0) AS 平均薪資
+from Employee AS E
+RIGHT JOIN Dept AS D
+ON E.DeptNo=D.DeptNo
+GROUP BY D.DeptName
+Order BY 薪資總額 DESC ;
+Go
+
+/*2.計算每一部門的部門名稱、總人數*/
+Select D.DeptName AS 部門名稱,COUNT(E.DeptNo) AS 總人數
+from Dept AS D
+Left JOIN Employee AS E
+ON E.DeptNo=D.DeptNo
+GROUP BY D.DeptName
+Order BY 總人數 DESC ;
+Go
+
+/*3.計算公司裡男女生的人數總人數*/
+Select Sum(Case When Sex='M' then 1 else 0 end)  AS 男生總人數,Sum(Case When Sex='F' then 1 else 0 end)  AS 女生總人數
+from Employee;
+Go
+
+/*4.計算每一員工的員工姓名、2021/03/15以後(含)請假的總時數(某員工03/15後沒請假需顯示0)*/
+Select E.EmpName AS 員工姓名,SUM(Case When A.AbsDate>='2021-03-15' then A.AbsHour else 0 end) AS 請假總時數
+From Employee AS E
+Left JOIN AbsDetail AS A
+ON E.EmpNo=A.EmpNo
+GROUP BY E.EmpName;
+GO
+
+/*5.計算每一員工的員工姓名、2017/12/15以後(含)請假的總時數，總時數超過6小時的才顯示*/
+Select E.EmpName AS 員工姓名,SUM(A.AbsHour) AS 請假總時數
+From Employee AS E 
+Left JOIN AbsDetail AS A
+ON E.EmpNo=A.EmpNo
+GROUP BY E.EmpName,A.AbsDate
+Having SUM(A.AbsHour)>6 and A.AbsDate>='2017-12-15';
+GO
+
+/*6.計算每一員工每一種假別的請假總時數(某員工的某假別沒請假需顯示0)*/
+Select E.EmpName AS 員工姓名,
+                    SUM(Case  When AbsName='特休' then AbsHour else 0 end) As '特休',
+                    SUM(Case  When AbsName='事假' then AbsHour else 0 end) As '事假',
+                    SUM(Case  When AbsName='病假' then AbsHour else 0 end) As '病假',
+                    SUM(Case  When AbsName='喪假' then AbsHour else 0 end) As '喪假'
+From Employee AS E left join AbsDetail AS A ON E.EmpNo=A.EmpNo
+LEFT JOIN Absent AS AB   ON A.AbsType=AB.AbsType 
+GROUP BY E.EmpName,AB.AbsName,A.AbsHour
+ORDER BY E.EmpName;
+GO
+
+/*7.計算每一部門男女生總人數各多少(某部門沒人員請顯示無)*/
+Select D.DeptName,E.Sex,COUNT(E.Sex) as 人數  
+From Employee AS E, Dept AS D 
+Where E.DeptNo=D.DeptNo
+GROUP BY D.DeptName,E.Sex
+Order By D.DeptName;
+
+/*8.	計算公司內各月過生日的總人數*/
+Select  MONTH(Birth) as 月份 ,count(*) as '每月生日總人數'
+From Employee
+GROUP BY MONTH(Birth);
+
+/*9.將每一員工、每一種假別，在2017年以後請假總時數大於5小時的人顯示出來*/
+Select E.EmpName AS 員工姓名,AB.AbsName AS 假別,SUM(A.AbsHour) AS 請假總時數
+From Employee AS E 
+Left JOIN AbsDetail AS A ON E.EmpNo=A.EmpNo
+Left JOIN Absent AS AB ON A.AbsType=AB.AbsType
+where A.AbsDate>'2017'
+GROUP BY E.EmpName,AB.AbsName
+Having SUM(A.AbsHour)>5;
+GO
+
+/*10.	請寫一個STORE PROCEDURE，INPUT(@date as varchar(8),@feq as varchar(1) )—m/s/y找出上月底/上季底/上年底的日期，回傳8字元
+程序名稱:sp_GetPreviousEndDate
+建立人員: <林弘翔>
+說明:<輸入日期，找出上月底/上季底/上年底的日期，回傳8字元>
+修改紀錄:<2023/10/27>
+建立日期:<2023/10/27>
+範例:<EXEC sp_GetPreviousEndDate '20201122', 'M';>     '日期' 上月底'M'/上季底'S'/上年底'Y'的日期
+*/
+/*
+CREATE PROCEDURE sp_GetPreviousEndDate
+    @inputDate VARCHAR(8),
+    @freq VARCHAR(1)
+AS
+BEGIN
+DECLARE @resultDate VARCHAR(8)
+    -- 檢查輸入日期是否符合預期格式 (八位數字)
+    IF  LEN(@inputDate) = 8
+    BEGIN
+        IF @freq = 'M'
+        BEGIN
+            -- 上個月底
+            SET @resultDate =CONVERT(varchar(8),DATEADD(MONTH, DATEDIFF(MONTH, 0, @inputDate ), -1),112)
+        END
+        ELSE IF @freq = 'S'
+        BEGIN
+            -- 上季底
+            SET @resultDate =CONVERT(varchar(8),DATEADD(QUARTER, DATEDIFF(QUARTER, 0, @inputDate ), -1),112)
+        END
+        ELSE IF @freq = 'Y'
+        BEGIN
+            -- 上年底
+            SET @resultDate = CONVERT(varchar(8),DATEADD(YEAR, DATEDIFF(YEAR, 0, @inputDate ), -1),112)
+        END
+    END
+    ELSE
+    BEGIN
+        -- 輸入日期格式不正確，進行錯誤處理
+        SET @resultDate = 'Invalid Date Format'
+    END
+    SELECT @resultDate AS PreviousEndDate
+END
+*/
+--測試作業答案
+DECLARE @outputDate VARCHAR(8)
+EXEC sp_GetPreviousEndDate '20201122', 'M';
+EXEC sp_GetPreviousEndDate '20201022', 'S';
+EXEC sp_GetPreviousEndDate '20201022', 'Y';
+/*上個月底 DATEDIFF先算差幾天DATEDIFF (datepart,startdate enddate )，DATEADD去把天數加減回來 (datepart , number , date )
+SELECT DATEADD(MONTH, DATEDIFF(MONTH, 0, '20230715' ), -1)
+--上個季底
+SELECT DATEADD(QUARTER, DATEDIFF(QUARTER, 0,'20230717' ), -1)
+--上個年底
+SELECT DATEADD(YEAR, DATEDIFF(YEAR, 0,'20230717' ), -1)
+*/
+/*************************************************************************
+11.請寫一個Function，取得字串中,以分隔符號區隔的資料
+程序名稱:fun_SplitToTable
+建立人員: <林弘翔>
+說明:<分割字串，inputString=要分割的輸入字串、delimiter是用來分割字串的字符、position是要檢索分割的位置>
+修改紀錄:<2023/11/07>(處理其他位置null問題)
+建立日期:<2023/10/30>
+範例:<SELECT dbo.fun_SplitToTable('AB,CD,EF,G',',',4);>
+*************************************************************************/
+/*
+CREATE FUNCTION dbo.fun_SplitToTable
+(
+    @inputString NVARCHAR(MAX), --輸入字串
+    @delimiter NVARCHAR(1),--分割符號
+    @position INT--要返回哪個位置的字串
+)
+RETURNS NVARCHAR(MAX)
+AS
+BEGIN
+    DECLARE @result NVARCHAR(MAX)
+ 
+    DECLARE @start INT, @end INT
+    SET @start = 1
+ 
+    WHILE @position > 1
+    BEGIN
+        SET @end = CHARINDEX(@delimiter, @inputString, @start)--分割字串的字符在哪個位置CHARINDEX(@符號, @執行FUN的輸入, @起始位置)end=2,5,8
+        IF @end = 0
+            RETURN NULL -- 沒有夠多的分割字串的話，返回 NULL
+ 
+        SET @start = @end + 1  --start=3,6,9
+        SET @position = @position - 1--position=2,3,4
+    END
+ 
+    SET @end = CHARINDEX(@delimiter, @inputString, @start)--@end=3,5
+    IF @end = 0
+        SET @end = LEN(@inputString) + 1 -- 處理最後一個分割字串
+ 
+    SELECT @result = SUBSTRING(@inputString, @start, @end - @start)--SUBSTR (inputString, 開始位置, 長度)(input,1,3-1)(input,3,5-3)
+ 
+    RETURN @result
+END
+*/
+SELECT dbo.fun_SplitToTable('AB,CD,EF,G',',',4);
+
+/************************************************************************************************
+12.請寫一個View，至少串起來2個table資料表
+程序名稱:VW_Homework
+建立人員: <林弘翔>
+說明:<查詢每個員工是哪個部門>
+修改紀錄:<2023/11/07>(增加left join)
+建立日期:<2023/10/30>
+範例: <SELECT * FROM  VW_Homework;>
+***************************************************************************************************/
+/*
+CREATE VIEW VW_Homework AS
+SELECT E.EmpNo AS 員工編號,E.EmpName AS 員工姓名,D.DeptName AS 部門名稱,E.Sex AS 員工性別,E.Salary AS 薪水,E.Birth AS 生日
+FROM Employee AS E 
+left join Dept AS D
+On E.DeptNo=D.DeptNo;
+*/
+SELECT * FROM  VW_Homework;
+
+/****************************************************************************
+13.請寫一個STORE PROCEDURE(包含變數宣告使用，包含 CURSOR 迴圈 、IF ELSE、有SELECT(需有一筆子查詢)、INSERT & UPDATE 至少兩句、並使用Transaction,TRY CATCH …. ，交易程序
+程序名稱:sp_Homework13
+建立人員: <林弘翔>
+說明:<(年度專案)針對特定部門計算總薪水，小於120000 該部門每員調薪"1"元 ，大於會在Procedure_Log資料表寫入總薪超過12萬不需要調薪>
+修改紀錄:<2023/10/27>
+建立日期:<2023/10/27>
+範例:<EXECUTE sp_Homework13 '001';> 001為部門代碼 詳情參考Employee或Dept的DeptNo
+*******************************************************************************************/
+/*
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE PROCEDURE sp_Homework13
+@DeptNo Varchar(3) 
+AS
+BEGIN
+    -- 宣告變數
+    DECLARE @done INT = 0;
+    DECLARE @emp_id INT; --EmpNo
+    DECLARE @abs_total INT;
+	
+
+    -- 定義遊標 CURSOR
+    DECLARE emp_cursor CURSOR FOR
+        SELECT EmpNo FROM Employee;
+    -- 定義事務
+    BEGIN TRANSACTION;
+    -- 建立 TRY...CATCH 區塊
+    BEGIN TRY
+        -- 開始 CURSOR 迴圈
+        OPEN emp_cursor;
+        read_loop:
+		BEGIN
+            FETCH NEXT FROM emp_cursor INTO @emp_id;
+            IF @@FETCH_STATUS = -1
+            BEGIN
+                SET @done = 1;
+            END
+            ELSE IF @@FETCH_STATUS = -2
+            BEGIN
+                SET @done = 1;
+            END
+            
+			SELECT @abs_total = sum(Salary)
+            FROM Employee
+            WHERE DeptNo =
+			(Select DeptNo From Dept where DeptNo = @DeptNo) ;
+            IF @abs_total < 120000
+            BEGIN
+                -- 部門代碼00x中總薪水小於十二萬的會加  00X部門的人加一塊薪水
+				 UPDATE Employee
+                SET Salary =Salary +1 where DeptNo =@DeptNo ;
+            END
+            ELSE
+            BEGIN
+                --@abs_total大於等於120000的話 在Procedure_Log會顯示不需要調薪
+				INSERT INTO Procedure_Log (Log_Date,DetailDes)
+                VALUES(GETDATE(),'部門代碼'+@DeptNo+'總薪超過12萬不需要調薪');  
+            END
+            FETCH NEXT FROM emp_cursor INTO @emp_id;
+        END;
+        CLOSE emp_cursor;
+    END TRY
+    BEGIN CATCH
+        -- 錯誤處理
+        IF @@TRANCOUNT > 0
+        BEGIN
+            ROLLBACK TRANSACTION;
+        END
+    END CATCH
+    -- 提交事務
+    IF @@TRANCOUNT > 0
+    BEGIN
+        COMMIT TRANSACTION;
+    END
+END
+*/
+/*
+CLOSE emp_cursor
+DEALLOCATE emp_cursor
+*/
+--輸入部門代碼
+EXECUTE sp_Homework13 '007';
+/************************************************************************************
+/*14.寫二個Function，一個回傳值 ，另一個回傳 TABLE，並使用SELECT 使用這兩函式。*/
+程序名稱:<fun_returnint>
+建立人員: <林弘翔>
+說明:<輸入一個整數 function會回傳一個將輸入值X2的結果>
+修改紀錄:<2023/10/30>
+建立日期:<2023/10/30>
+範例:
+DECLARE @input INT = 5
+DECLARE @output INT 
+SELECT @output = dbo.fun_returnint(@input)
+SELECT 'Result from fun_returnint' AS Description, @output AS Value
+***************************************************************************************/
+/*
+USE  TrainDB122464;
+GO
+CREATE FUNCTION dbo.fun_returnint(@input INT)
+RETURNS INT --返回值的資料類型
+AS
+BEGIN
+    DECLARE @result INT
+    SET @result = @input * 2
+    RETURN @result
+END
+*/
+--驗證函數
+DECLARE @input INT = 5
+DECLARE @output INT
+-- 使用 SELECT 來呼叫純量函式
+SELECT @output = dbo.fun_returnint(@input)
+-- 輸出純量函式的結果
+SELECT 'Result from fun_returnint' AS Description, @output AS Value
+/*********************************************************************
+/*14.寫二個Function，一個回傳值 ，另一個回傳 TABLE，並使用SELECT 使用這兩函式。*/
+程序名稱:fun_returntable
+建立人員: <林弘翔>
+說明:<輸入一個整數 function會回傳一個將輸入值X2的資料表>
+修改紀錄:<2023/10/30>
+建立日期:<2023/10/30>
+範例:
+DECLARE @input INT = 5
+SELECT * FROM dbo.fun_returntable(@input)
+***************************************************************************************/
+--第二個FUN
+/*
+CREATE FUNCTION dbo.fun_returntable(@input INT)
+RETURNS TABLE--返回的資料格式
+AS
+RETURN (
+    SELECT @input AS InputValue, @input * 2 AS DoubledValue
+)
+*/
+DECLARE @input INT = 5
+-- 使用 SELECT 來呼叫表格函式
+SELECT * FROM dbo.fun_returntable(@input)
+
+/*15.時間序列(15分鐘為一單位)、檢核同一個時間僅限兩人使用，請練習設計一個TABLE並下SELECT檢核。*/
+/*
+CREATE TABLE Reservations (
+    ReservationID INT PRIMARY KEY IDENTITY(1,1),--ReservationID當pk
+    StartTime DATETIME, --StartTime開始時間
+    EndTime DATETIME,--EndTime結束時間
+    UserID INT       --UserID使用者id
+); --創建一個Table去儲存使用這系統的人數
+*/
+-- 觸發器去避免超過兩人
+/*
+CREATE TRIGGER CheckReservations
+ON Reservations
+AFTER INSERT
+AS
+BEGIN
+    DECLARE @StartTime DATETIME, @EndTime DATETIME;
+ 
+    -- 從輸入的資料選出起始時間最小 結束時間最大去比較 算總筆數
+    SELECT @StartTime = MIN(StartTime), @EndTime = MAX(EndTime)
+    FROM Inserted;
+ 
+    -- 檢查在 StartTime 和 EndTime 之間的時間內預約數量，不得超過兩筆
+    IF (SELECT COUNT(*) FROM Reservations WHERE StartTime < @EndTime AND EndTime > @StartTime) > 2
+    BEGIN
+        RAISERROR ('在指定時間內不得超過兩位使用者。', 16, 1);
+        ROLLBACK;
+    END
+END;
+*/
+-- 插入一筆在同一15分鐘區間內的第三筆預約（觸發觸發器）
+INSERT INTO Reservations (StartTime, EndTime, UserID)
+VALUES
+('2023-11-01 09:00:00', '2023-11-01 09:15:00',1),
+    ('2023-11-01 09:00:00', '2023-11-01 09:15:00',2);
+-- IF (SELECT COUNT(*) FROM Reservations WHERE StartTime < @EndTime AND EndTime > @StartTime) > 2
+INSERT INTO Reservations (StartTime, EndTime, UserID)
+VALUES ('2023-11-01 09:16:00', '2023-11-01 09:30:00', 3),
+('2023-11-01 09:17:00', '2023-11-01 09:30:00', 4);
+GO
+
+INSERT INTO Reservations (StartTime, EndTime, UserID)
+VALUES ('2023-11-01 09:30:00', '2023-11-01 09:31:00', 5),
+('2023-11-01 09:30:00', '2023-11-01 09:31:00', 6);
+GO
+
+SELECT*  
+FROM  Reservations;
+/*清除資料
+truncate table Reservations 
+DBCC CHECKIDENT ('Reservations', RESEED, 1);
+*/
+--convert(varchar, getdate(), 120) - yyyy-mm-dd hh:mm:ss(24h)
+SELECT
+  DATEADD(minute,(DATEDIFF(minute,CONVERT (VARCHAR (10),DATEADD(ss ,-1, EndTime),120),DATEADD(ss ,- 1, EndTime)) / 15) * 15,CONVERT (VARCHAR(10), EndTime, 120)) AS 時間區間,COUNT(*) AS 人數
+FROM Reservations  
+GROUP BY   DATEADD(minute,(DATEDIFF (minute,CONVERT (VARCHAR (10),
+          DATEADD(ss ,- 1, EndTime),120),
+        DATEADD(ss ,- 1, EndTime)) / 15)* 15,
+ CONVERT (VARCHAR(10), EndTime, 120)
+)
