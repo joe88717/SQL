@@ -1,0 +1,254 @@
+USE  TrainDB122464;
+
+/*********************************
+1.查詢姓陳的員工有哪些人，查詢結果要有員工編號、姓名、性別(顯示中文男/女)和目前年齡。*/
+
+Select EmpNo AS 員工編號,EmpName AS 員工姓名,Case When Sex='F' then '女' else '男' end AS 性別,DATEDIFF(YEAR,Birth,GETDATE()) AS 年齡
+from Employee
+Where EmpName like '陳%' ;
+Go
+
+/***********************************
+2.請求出32歲的女性的員工，查詢結果要有部門中文名稱、員工編號、目前年齡、性別(顯示中文男/女)、並將結果根據薪資由大到小排列。*/
+Select E.EmpNo AS 員工編號,D.DeptName AS 部門名稱,DATEDIFF(YEAR,E.Birth,GETDATE()) AS 目前年齡,Case When E.Sex='F' then '女' else '男' end AS 性別,Salary AS 薪水
+from Employee AS E
+Left JOIN Dept AS D
+ON E.DeptNo=D.DeptNo
+GROUP BY E.EmpNo,E.Birth,D.DeptName,E.Sex,E.Salary
+Having DATEDIFF(YEAR,E.Birth,GETDATE())=32
+Order BY E.Salary DESC ;
+Go
+
+/****************************************************************************************
+3.請列出平均薪資最高的部門內所有同仁本年度請假各假別總時數，查詢結果要有部門中文名稱、員工編號、姓名、性別(顯示中文男/女)、請假假別、本年度請假總時數。
+*/
+
+SELECT 
+    Dept.DeptName AS '部門',
+    Employee.EmpNo AS '員工編號',
+    Employee.EmpName AS '姓名',
+    CASE WHEN Employee.Sex = 'M' THEN '男' ELSE '女' END AS '性別',
+    AbsDetail.AbsType AS '請假假別',
+    SUM(AbsDetail.AbsHour) AS '本年度請假總時數'
+FROM 
+    Employee
+JOIN 
+    Dept ON Employee.DeptNo = Dept.DeptNo
+JOIN 
+    (
+        SELECT TOP 1 DeptNo
+        FROM Employee
+        GROUP BY DeptNo,Salary
+        ORDER BY AVG(Salary) DESC
+    ) AS HighestAvgSalaryDept ON Employee.DeptNo = HighestAvgSalaryDept.DeptNo
+JOIN 
+    AbsDetail ON Employee.EmpNo = AbsDetail.EmpNo
+GROUP BY 
+    Dept.DeptName,
+    Employee.EmpNo,
+    Employee.EmpName,
+    Employee.Sex,
+	AbsDetail.AbsType,
+	AbsDetail.AbsDate
+Having DATEPART(yyyy, AbsDetail.AbsDate)= DATEPART(yyyy, getdate());
+/*找出平均薪水最高的部門 Desc由大到小抓薪水最高的
+SELECT TOP 1 DeptNo,AVG(Salary)
+FROM Employee
+GROUP BY DeptNo,Salary
+ORDER BY AVG(Salary) DESC
+*/
+/*抓今年的年份出來
+SELECT DATEPART(yyyy, getdate())
+SELECT EmpNo,SUM(AbsDetail.AbsHour) from AbsDetail where DATEPART(yyyy, AbsDate)= DATEPART(yyyy, getdate())
+group by EmpNo;
+Select* From AbsDetail;
+*/
+
+/************************************
+4.請列出本年度平均總請假最低的部門同仁，查詢結果要有部門中文名稱、員工姓名、薪資，並按照員工編號由小排到大。Select* From AbsDetail;
+*/
+SELECT 
+    Dept.DeptName AS '部門',
+    Employee.EmpNo AS '員工編號',
+    Employee.EmpName AS '姓名',
+    Employee.Salary AS '薪水'
+FROM 
+    Employee
+JOIN 
+    Dept ON Employee.DeptNo = Dept.DeptNo
+JOIN 
+    (
+	SELECT Top 1 DeptNo
+	FROM Employee,AbsDetail
+	Where Employee.EmpNo=AbsDetail.EmpNo
+	GROUP BY Employee.DeptNo
+	ORDER BY AVG(AbsHour) ASC
+    ) AS lowAvgAbsHour ON Employee.DeptNo = lowAvgAbsHour.DeptNo
+GROUP BY 
+    Dept.DeptName,
+    Employee.EmpNo,
+    Employee.EmpName,
+	Employee.Salary
+ORDER BY Employee.EmpNo ASC;
+/*先看哪個部門請假平均時數最少
+Select AbsDetail.*,DeptNo From AbsDetail,Employee where Employee.EmpNo=AbsDetail.EmpNo;
+--所有有請假平均時數的部門
+SELECT Employee.DeptNo,AVG(AbsDetail.AbsHour)
+FROM Employee,AbsDetail
+Where Employee.EmpNo=AbsDetail.EmpNo
+GROUP BY Employee.DeptNo
+ORDER BY AVG(AbsHour) ASC
+--找出平均請最少小時的部門跟他的時數
+SELECT Top 1 DeptNo,AVG(AbsDetail.AbsHour)
+FROM Employee,AbsDetail
+Where Employee.EmpNo=AbsDetail.EmpNo
+GROUP BY Employee.DeptNo
+ORDER BY AVG(AbsHour) ASC
+*/
+
+/******************************************************************************
+5.	請列出各假別於本年度所有公司同仁平均一人休假多少小時。Select* From AbsDetail
+Select* From AbsDetail
+*/
+
+SELECT 
+    Absent.AbsName AS '請假假別',
+    AVG(AbsDetail.AbsHour) AS '平均請假時數',
+	Absent.AbsType
+FROM 
+Absent
+JOIN 
+   AbsDetail  ON AbsDetail.AbsType = Absent.AbsType
+GROUP BY 
+    Absent.AbsName,Absent.AbsType,DATEPART(yyyy, AbsDetail.AbsDate)
+Having DATEPART(yyyy, AbsDetail.AbsDate)= DATEPART(yyyy, getdate());
+
+SELECT *
+FROM 
+Absent
+
+/*不分當年度
+SELECT 
+    Absent.AbsName AS '請假假別',
+    AVG(AbsDetail.AbsHour) AS '平均請假時數'
+FROM
+AbsDetail
+JOIN 
+   Absent  ON AbsDetail.AbsType = Absent.AbsType
+GROUP BY 
+    Absent.AbsName
+*/
+/******************************************************************************
+
+/**************************************************************************************
+6.請寫一個STORE PROCEDURE， 輸入年齡,性別(M/F/不輸入為全部性別)會回傳小於等於輸入年齡且性別的人的資料
+程序名稱:sp_AgeGenderdata
+建立人員: <林弘翔>
+說明:<輸入年齡 @inputAge(必填)、性別,@inputGender(可不填) SP會回傳所有小於等於輸入年齡且符合性別的人的資料>
+修改紀錄:<2023/11/17>
+建立日期:<2023/11/17>
+範例:
+EXEC sp_AgeGenderdata @inputAge=30,@inputGender='M'
+EXEC sp_AgeGenderdata @inputAge=30
+***************************************************************************************/
+*/
+/*
+GO
+CREATE PROCEDURE sp_AgeGenderdata
+    @inputAge INT,--輸入SP的年齡
+    @inputGender CHAR(1) = NULL--輸入SP的年齡的性別
+AS
+BEGIN
+    IF @inputGender IS NULL
+    BEGIN
+        -- 如果沒輸入性別，查詢所有小於等於輸入年齡且性別沒限制的資料
+        SELECT *
+        FROM Employee
+        WHERE DATEDIFF(YEAR,Birth,GETDATE()) <= @inputAge;
+    END
+    ELSE
+    BEGIN
+        -- 有輸入性別，查詢所有小於等於輸入年齡且性別符合的資料
+        SELECT *
+        FROM Employee
+        WHERE  DATEDIFF(YEAR,Birth,GETDATE()) <= @inputAge AND Sex = @inputGender;
+    END
+END
+*/
+EXEC sp_AgeGenderdata @inputAge=30,@inputGender='M'
+EXEC sp_AgeGenderdata @inputAge=30;
+
+/**************************************************************************************
+7.	請寫一個STORE PROCEDURE， 輸入部門代碼會將該部門同仁利用CURSOR、Transaction、TRY CATCH將該部門同仁全明日自動請公假一日，並且小於30歲者加薪10%。
+程序名稱:sp_RestSalary
+建立人員: <林弘翔>
+說明:<輸入部門代碼 @DeptNo(必填) SP會insert該部門全同仁明日自動請公假一日，並且小於30歲者加薪10%>
+修改紀錄:<2023/11/20>
+建立日期:<2023/11/20>
+範例:
+EXEC sp_RestSalary @DeptNo='001'
+***************************************************************************************/
+/*
+GO
+CREATE PROCEDURE sp_RestSalary
+    @DeptNo INT --使用sp的input
+AS
+BEGIN
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        DECLARE @EmpNo Varchar(10)
+        DECLARE @Age INT
+        DECLARE @Salary INT 
+
+        DECLARE empCursor CURSOR FOR
+        SELECT EmpNo, DATEDIFF(YEAR, Birth, GETDATE()) AS Age, Salary
+        FROM Employee
+        WHERE DeptNo = @DeptNo; --先抓取輸入部門的員工
+
+        OPEN empCursor;
+        FETCH NEXT FROM empCursor INTO @EmpNo, @Age, @Salary;
+
+        WHILE @@FETCH_STATUS = 0 --0:語句成功 -1:語句失敗或此行不在結果中 -2:被提取的行不存在
+        BEGIN
+            BEGIN
+                -- 自動請公假8小時  公假代碼805 日期設定明天
+                INSERT INTO AbsDetail (EmpNo, AbsType, AbsDate, AbsHour)
+                VALUES (@EmpNo, '805', DATEADD(DAY, 1, GETDATE()), 8);
+
+                -- 年齡小於30歲加薪10%
+                IF @Age < 30
+                BEGIN
+                    UPDATE Employee
+                    SET Salary = @Salary * 1.1
+                    WHERE EmpNo = @EmpNo;
+                END
+            END
+            FETCH NEXT FROM empCursor INTO @EmpNo, @Age, @Salary;
+        END
+
+        CLOSE empCursor;
+        DEALLOCATE empCursor;
+
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+
+        -- 處理異常情況
+        DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
+        RAISERROR('發生失敗: %s', 16, 1, @ErrorMessage);
+    END CATCH
+END
+*/
+EXEC sp_RestSalary @DeptNo='001';
+/*
+select* from Employee;
+select* from AbsDetail;
+SELECT EmpNo, DATEDIFF(YEAR, Birth, GETDATE()) AS Age, Salary
+FROM Employee
+ SELECT EmpNo, DATEDIFF(YEAR, Birth, GETDATE()) AS Age, Salary
+        FROM Employee
+        WHERE DeptNo = 001
+*/
