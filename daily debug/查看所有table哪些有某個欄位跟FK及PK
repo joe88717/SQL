@@ -1,0 +1,37 @@
+遭遇情況:
+ex:delete from tableA where A欄位名稱 ='apple' 然後出現錯誤。
+透過delete語法刪除某些資料時，無法刪除，會報錯出現FK索引鍵鎖定資料，因此無法對單一table的某些資料進行刪除
+因為要進行刪除的資料跟其他資料表有FK連動到，因此有兩種方法解決，一種是把其他有關連資料表的資料一起做刪除，第二種是把FK解除
+ex: tableB 也有跟 tableA你要刪除的資料連動到，因此會刪除失敗
+
+
+以下是第一種的解法，，有時候會不知道要刪除的資料是有跟哪些table有關連到，尤其是資料表跟資料量大的時候，就需要一次去找出要刪除資料有關係的FK名稱跟table
+ex:把tableB一樣 有B欄位名稱 ='apple'的資料也刪掉
+
+--查看每個table底下詳細Schema
+SELECT * FROM Information_Schema.COLUMNS
+--where COLUMN_NAME = '欄位名稱xxx'
+
+--查看每個table底下有哪些 PK、FK
+select * from INFORMATION_SCHEMA.TABLE_CONSTRAINTS 
+--一樣自己下where條件 
+
+--查詢DB底下各個FK分別綁在哪些table欄位，主要是這邊在做查詢
+SELECT   
+    f.name AS foreign_key_name  
+   ,OBJECT_NAME(f.parent_object_id) AS table_name  
+   ,COL_NAME(fc.parent_object_id, fc.parent_column_id) AS constraint_column_name  
+   ,OBJECT_NAME (f.referenced_object_id) AS referenced_object  
+   ,COL_NAME(fc.referenced_object_id, fc.referenced_column_id) AS referenced_column_name  
+   ,f.is_disabled, f.is_not_trusted
+   ,f.delete_referential_action_desc  
+   ,f.update_referential_action_desc  
+FROM sys.foreign_keys AS f  
+INNER JOIN sys.foreign_key_columns AS fc   
+   ON f.object_id = fc.constraint_object_id 
+--一樣自己下where條件 
+
+之後將跟刪除有關的FK的table都一起做刪除
+ex:假設FK找到有tableB跟tableC有關聯
+delete from tableB where B欄位名稱 ='apple'
+delete from tableC where C欄位名稱 ='apple'
