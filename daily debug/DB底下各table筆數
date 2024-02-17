@@ -1,0 +1,18 @@
+--202240217
+--顯示DB底下每個table的資料筆數
+SELECT
+   t.NAME AS TableName,
+   SUM(p.rows) AS RowCounts
+FROM
+   sys.tables t
+JOIN
+   sys.partitions p ON t.object_id = p.object_id
+WHERE
+   t.schema_id = SCHEMA_ID('dbo') -- 替換 'dbo' 為實際的 schema 名稱
+   AND p.index_id < 2 -- 確保只計算 HEAP 或 Clustered Index 上的 rows
+GROUP BY
+   t.NAME
+ORDER BY
+   RowCounts DESC; 
+
+    SELECT COUNT(*) FROM ToDW_APP_FUN with (NOLOCK);
