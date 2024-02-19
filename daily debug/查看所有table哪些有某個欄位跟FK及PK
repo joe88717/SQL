@@ -35,3 +35,6 @@ INNER JOIN sys.foreign_key_columns AS fc
 ex:假設FK找到有tableB跟tableC有關聯
 delete from tableB where B欄位名稱 ='apple'
 delete from tableC where C欄位名稱 ='apple'
+
+ --查詢某資料表所有的 index , 描述及鍵值屬性
+ exec sp_helpindex CMS_TMP_APP_FUN
