@@ -1,0 +1,11 @@
+SELECT 
+    sj.name AS JobName,
+    sjs.step_id AS StepID,
+    sjs.step_name AS StepName,
+    sjs.command AS Command
+FROM 
+    msdb.dbo.sysjobs AS sj
+INNER JOIN 
+    msdb.dbo.sysjobsteps AS sjs ON sj.job_id = sjs.job_id
+WHERE 
+    sjs.command LIKE '%sp_ETL_Tochannel%';--SP名稱
