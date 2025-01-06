@@ -29,6 +29,7 @@ SELECT
 FROM sys.foreign_keys AS f  
 INNER JOIN sys.foreign_key_columns AS fc   
    ON f.object_id = fc.constraint_object_id 
+--where COL_NAME(fc.parent_object_id, fc.parent_column_id)='CampaignID'
 --一樣自己下where條件 
 
 之後將跟刪除有關的FK的table都一起做刪除
