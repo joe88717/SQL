@@ -1,0 +1,2 @@
+--當天-2個月如果時間比扣掉兩個月還早就刪掉
+delete CampDB.dbo.xxxx		where convert(char(8),[日期欄位],112) < convert(char(8),dateadd(M,-2,GETDATE()),112)
