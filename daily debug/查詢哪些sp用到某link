@@ -1,0 +1,20 @@
+USE [master];
+exec sp_MSforeachdb 'if ''?'' NOT IN (''master'',''msdb'')
+begin
+  use [?];
+  SELECT 
+  ''?'' as [DB Name],
+  b.name, 
+  --b.id, 
+  b.xtype,
+  b.crdate,
+  a.text  --code
+FROM 
+  sys.sysobjects b 
+  INNER JOIN syscomments a ON b.id = a.id 
+WHERE 
+  a.text COLLATE Chinese_Taiwan_Stroke_CI_AS LIKE ''%WALLETSHAKE%'' --想要查詢的關鍵字，套用不區分大小寫的定序 %要查的linkserver%
+  --and b.type = ''P''    
+order by 
+  b.name
+  end';
