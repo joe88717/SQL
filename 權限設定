@@ -1,0 +1,27 @@
+伺服器層級的角色如下：
+sysadmin　最大的，伺服器所有活動都可以處理
+serveradmin　可配置伺服器的設定
+securityadmin　管理登入伺服器的權限，援予或取消
+processadmin　管理伺服器的進程，例如可取消某某使用者的查詢
+setupadmin　加入或移除伺服器
+bulkadmin　有權匯入大量的資料
+diskadmin　可管理伺服器上的磁碟
+dbcreator 可建、改、缷、刪資料庫
+public　所有的角色的都是public
+
+伺服器角色是為了Server的運作及安全性所創建
+Server像是個大房子，而資料庫像是房間
+就算設定user可以登入Server了，但不代表就可以進到房間
+所以在資料庫中也有角色設定，層級如下：
+
+db_owner　擁有者，最大的
+db_securityadmin　可修改管理其他使用者的權限
+db_accessadmin　可增加或刪除登入使用者
+db_backupoperator　可備份資料庫
+db_ddladmin　可執行資料庫定義語言(ddl)，如CREATE、ALTER
+db_datawriter　可寫、加、刪資料庫裡的資料
+db_datareader　可讀資料(SELECT)
+db_denydatawriter　禁止寫入的角色
+db_denydatareader　禁止讀取的角色
+
+/*https://myericho.blogspot.com/2014/06/sql-server_4.html*/
