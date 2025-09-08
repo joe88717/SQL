@@ -1,0 +1,15 @@
+declare @datadate varchar(10)
+declare @dataYM varchar(6)
+set @datadate = '20250908'
+	if(@datadate<> '')
+	Begin
+	  SET @dataYM = CONVERT(VARCHAR(6), CONVERT(DATETIME, @datadate, 112), 112)
+	end 
+	else
+	Begin
+	      SET @dataYM = FORMAT(GETDATE(), 'yyyyMM')
+	end
+
+
+--set @dataYM = left (@datadate,6)
+select @dataYM
